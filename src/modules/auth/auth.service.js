@@ -14,18 +14,19 @@ class AuthService {
   async sendOTP(mobile) {
     const user = await this.#model.findOne({ mobile });
     const now = new Date().getTime();
+
+    // شماره‌ی دمو همیشه کد ثابت می‌گیرد
+    const isDemoAccount = mobile === "09120000000";
     const otp = {
-      code: randomInt(10000, 99999),
-      expiresIn: now + 1000 * 60 * 2,
+      code: isDemoAccount ? 11111 : randomInt(10000, 99999),
+      expiresIn: now + 1000 * 60 * 60 * 24, // برای دمو یک روز اعتبار بده
     };
+
     console.log(otp);
     if (!user) {
       const newUser = await this.#model.create({ mobile, otp });
       return newUser;
     }
-    // if (user.otp && user.otp.expiresIn > now) {
-    //   throw new createHttpError.BadRequest(AuthMessage.OtpCodeNotExpired);
-    // }
     user.otp = otp;
     await user.save();
     return user;
@@ -63,7 +64,7 @@ class AuthService {
       const user = await UserModel.findById(data.id).lean();
       if (!user)
         throw new createHttpError.Unauthorized(
-          AuthorizationMessage.NotFoundAccount
+          AuthorizationMessage.NotFoundAccount,
         );
       const accessToken = this.signToken({ mobile: user.mobile, id: user._id });
       const refreshToken = this.signToken({
@@ -77,7 +78,7 @@ class AuthService {
             accessToken,
             refreshToken,
           },
-        }
+        },
       );
       return {
         accessToken,
@@ -88,7 +89,7 @@ class AuthService {
   }
   signToken(
     payload,
-    expiresIn = new Date().getTime() + 1000 * 60 * 60 * 24 * 30 * 12
+    expiresIn = new Date().getTime() + 1000 * 60 * 60 * 24 * 30 * 12,
   ) {
     return jwt.sign(payload, process.env.JWT_SECRET_KEY, { expiresIn });
   }
